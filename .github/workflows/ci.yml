@@ -1,6 +1,7 @@
 name: PHP Quality Checks
 
 on:
+  workflow_dispatch:            # allow manual runs
   push:
     branches: [ main, master, audit-review ]
   pull_request:
@@ -21,9 +22,24 @@ jobs:
           extensions: mbstring, intl, json, curl
           coverage: none
 
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: composer-
+
       - name: Install dependencies
         run: |
-          composer install --no-progress --prefer-dist
+          composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Debug vendor/bin and installed packages
+        run: |
+          echo "PWD: $(pwd)"
+          ls -la vendor || true
+          ls -la vendor/bin || true
+          if [ -f vendor/bin/phpstan ]; then vendor/bin/phpstan --version || true; else echo "phpstan missing"; fi
+          composer show --no-ansi | sed -n '1,200p'
 
       - name: PHPStan
         run: |
